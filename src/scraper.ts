@@ -1,0 +1,64 @@
+import { chromium, Browser, Page } from 'playwright';
+import { config } from './config.js';
+
+export async function scrapeArticle(): Promise<string> {
+  const browser: Browser = await chromium.launch({ headless: false }); // Set to true for production
+  const context = await browser.newContext();
+  const page: Page = await context.newPage();
+
+  try {
+    console.log('Navigating to PressPlay...');
+    await page.goto('https://www.pressplay.cc/');
+
+    // Handle potential popup
+    try {
+      await page.locator('.popup-main > .pp-news-feed > .pp-news-feed-close-btn > .icon').click({ timeout: 5000 });
+    } catch (e) {
+      // Popup might not appear
+    }
+
+    console.log('Logging in...');
+    await page.getByRole('button', { name: '登入/註冊' }).click();
+    await page.getByRole('textbox', { name: '電子信箱' }).fill(config.pressplay.loginName);
+    await page.getByRole('textbox', { name: '密碼' }).fill(config.pressplay.password);
+    await page.getByRole('button', { name: '登入', exact: true }).click();
+
+    // Wait for login to complete
+    await page.waitForURL(/.*pressplay.cc\/.*/);
+
+    console.log('Navigating to "My Learning"...');
+    await page.getByRole('link', { name: '我的學習' }).nth(2).click();
+
+    console.log('Navigating to the latest article...');
+    // This was recorded as the 4th empty link, which usually points to the latest post
+    await page.getByRole('link').filter({ hasText: /^$/ }).nth(4).click();
+
+    // Wait for the article page to load
+    await page.waitForLoadState('networkidle');
+
+    console.log('Extracting content...');
+    // We'll try to get the content. Since selectors can be dynamic, 
+    // we'll try to target the main article area.
+    // If you have a specific selector for the article body, replace '.project-post-content'
+    const articleContent = await page.evaluate(() => {
+      // Try common PressPlay article selectors or fall back to main/article tags
+      const selectors = ['.project-post-content', 'article', 'main', '.pp-post-content'];
+      for (const selector of selectors) {
+        const el = document.querySelector(selector);
+        if (el && el.textContent) return el.textContent.trim();
+      }
+      return document.body.innerText.trim();
+    });
+
+    console.log('Logging out...');
+    await page.locator('.pp-avatar.pp-avatar-sm').click();
+    await page.getByRole('link', { name: '登出' }).click();
+
+    return articleContent;
+  } catch (error) {
+    console.error('Error during scraping:', error);
+    throw error;
+  } finally {
+    await browser.close();
+  }
+}

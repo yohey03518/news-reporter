@@ -42,4 +42,23 @@ After recording:
 
 ### Phase 2: Run the application
 
-(Instructions will be updated after implementation)
+1. Ensure your `.env` file is fully populated with:
+   - `PRESSPLAY_LOGIN_NAME`
+   - `PRESSPLAY_PASSWORD`
+   - `LINE_CHANNEL_ACCESS_TOKEN`
+   - `LINE_USER_IDS` (comma-separated)
+
+2. Fill in your specific Gemini prompt in `src/summarizer.ts`.
+
+3. Run the application:
+   ```bash
+   pnpm start
+   ```
+
+## Project Structure
+
+- `src/index.ts`: Main orchestrator.
+- `src/scraper.ts`: Playwright logic for scraping PressPlay.
+- `src/summarizer.ts`: Wrapper for local Gemini CLI calls.
+- `src/lineClient.ts`: LINE Messaging API client.
+- `src/config.ts`: Configuration and environment variable validation.
