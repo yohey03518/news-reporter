@@ -9,10 +9,34 @@ const execPromise = promisify(exec);
 export async function summarizeContent(content: string): Promise<string> {
   console.log('Calling Gemini CLI for summary...');
 
-  // TODO: Fill in your specific Gemini prompt here
-  const prompt = `Please summarize the following article content:
+  // Use the specific Gemini prompt template provided by the user
+  const prompt = `請根據以下文章內容，按照指定格式進行總結：
 
-  ${content}`;
+今日水位建議：{持股水位建議}（{簡短理由}）
+
+  整體盤勢說明：{50字內，涵蓋美股／費半／台股大盤／櫃買走勢與均線位置}
+
+  個股族群
+  - {族群名稱}（{族群定位／操作建議，例如：強勢主流、持股抱牢}）：
+    - {股票代號} {股票名稱} — {操作觀察重點／表現}
+    - {股票代號} {股票名稱} — {操作觀察重點／表現}
+
+  - {族群名稱}（{族群定位／操作建議}）：
+    - {股票代號} {股票名稱} — {操作觀察重點／表現}
+    - {股票代號} {股票名稱} — {操作觀察重點／表現}
+
+  - {族群名稱}（{族群定位／操作建議}）：
+    - {股票代號} {股票名稱} — {操作觀察重點／表現}
+    - {股票代號} {股票名稱} — {操作觀察重點／表現}
+
+  填寫提示：
+  - 持股水位建議：例 三成／五成／滿水位，括號內補上理由（如「櫃買差一口氣形成三陽開泰」）
+  - 整體盤勢說明：限 50 字內，涵蓋美股族群（費半／那斯達克）、台股大盤、櫃買的均線位置與多空狀態
+  - 族群分類：建議 2–4 個族群，依「強勢主流」「外資／法人喊多」「短線翻多選股」等定位分類
+  - 個股條目：一律使用「代號 名稱 — 觀察重點」格式，每檔換行
+
+文章內容：
+${content}`;
 
   const tempFilePath = path.join(os.tmpdir(), `gemini-prompt-${Date.now()}.txt`);
 
