@@ -37,18 +37,10 @@ export async function scrapeArticle(): Promise<string> {
     await page.waitForLoadState('networkidle');
 
     console.log('Extracting content...');
-    // We'll try to get the content. Since selectors can be dynamic, 
-    // we'll try to target the main article area.
-    // If you have a specific selector for the article body, replace '.project-post-content'
-    const articleContent = await page.evaluate(() => {
-      // Try common PressPlay article selectors or fall back to main/article tags
-      const selectors = ['.project-post-content', 'article', 'main', '.pp-post-content'];
-      for (const selector of selectors) {
-        const el = document.querySelector(selector);
-        if (el && el.textContent) return el.textContent.trim();
-      }
-      return document.body.innerText.trim();
-    });
+    // Use the specific locator provided by the user
+    const articleLocator = page.locator('.article-main-content');
+    await articleLocator.waitFor({ state: 'visible' });
+    const articleContent = await articleLocator.innerText();
 
     console.log('Logging out...');
     await page.locator('.pp-avatar.pp-avatar-sm').click();
