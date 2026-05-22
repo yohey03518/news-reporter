@@ -33,7 +33,7 @@ export async function scrapeArticle(): Promise<string> {
     logInfo('Navigating to the latest article...');
 
     // Debugging the target link
-    const targetLink = page.getByRole('link').filter({ hasText: /^$/ }).nth(4);
+    const targetLink = page.locator('.article-card').getByRole('link').nth(0);
     const linkDetails = await targetLink.evaluate((el: HTMLAnchorElement) => ({
       href: el.href,
       outerHTML: el.outerHTML,
@@ -44,7 +44,7 @@ export async function scrapeArticle(): Promise<string> {
     await targetLink.click();
 
     // Wait for the article page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
 
     logInfo('Extracting content...');
     // Use the specific locator provided by the user
@@ -62,8 +62,5 @@ export async function scrapeArticle(): Promise<string> {
     throw error;
   } finally {
     await browser.close();
-  }
-}
-
   }
 }
