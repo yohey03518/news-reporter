@@ -3,11 +3,12 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { logInfo, logError } from './logger.js';
 
 const execPromise = promisify(exec);
 
 export async function summarizeContent(content: string): Promise<string> {
-  console.log('Calling Gemini CLI for summary...');
+  logInfo('Calling Gemini CLI for summary...');
 
   // Use the specific Gemini prompt template provided by the user
   const prompt = `請根據以下文章內容，按照指定格式進行總結：
@@ -52,12 +53,12 @@ ${content}`;
     const { stdout, stderr } = await execPromise(`gemini < "${tempFilePath}"`);
 
     if (stderr) {
-      console.warn('Gemini CLI stderr:', stderr);
+      logInfo('Gemini CLI stderr:', stderr);
     }
 
     return stdout.trim();
   } catch (error) {
-    console.error('Error calling Gemini CLI:', error);
+    logError('Error calling Gemini CLI:', error);
     throw new Error('Failed to generate summary from Gemini CLI.');
   } finally {
     // Clean up temp file

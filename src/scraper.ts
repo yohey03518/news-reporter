@@ -1,5 +1,6 @@
 import { chromium, Browser, Page } from 'playwright';
 import { config } from './config.js';
+import { logInfo, logError } from './logger.js';
 
 export async function scrapeArticle(): Promise<string> {
   const browser: Browser = await chromium.launch({ headless: false }); // Set to true for production
@@ -7,7 +8,7 @@ export async function scrapeArticle(): Promise<string> {
   const page: Page = await context.newPage();
 
   try {
-    console.log('Navigating to PressPlay...');
+    logInfo('Navigating to PressPlay...');
     await page.goto('https://www.pressplay.cc/');
 
     // Handle potential popup
@@ -17,7 +18,7 @@ export async function scrapeArticle(): Promise<string> {
       // Popup might not appear
     }
 
-    console.log('Logging in...');
+    logInfo('Logging in...');
     await page.getByRole('button', { name: '登入/註冊' }).click();
     await page.getByRole('textbox', { name: '電子信箱' }).fill(config.pressplay.loginName);
     await page.getByRole('textbox', { name: '密碼' }).fill(config.pressplay.password);
@@ -26,31 +27,43 @@ export async function scrapeArticle(): Promise<string> {
     // Wait for login to complete
     await page.waitForURL(/.*pressplay.cc\/.*/);
 
-    console.log('Navigating to "My Learning"...');
+    logInfo('Navigating to "My Learning"...');
     await page.getByRole('link', { name: '我的學習' }).nth(2).click();
 
-    console.log('Navigating to the latest article...');
-    // This was recorded as the 4th empty link, which usually points to the latest post
-    await page.getByRole('link').filter({ hasText: /^$/ }).nth(4).click();
+    logInfo('Navigating to the latest article...');
+
+    // Debugging the target link
+    const targetLink = page.getByRole('link').filter({ hasText: /^$/ }).nth(4);
+    const linkDetails = await targetLink.evaluate((el: HTMLAnchorElement) => ({
+      href: el.href,
+      outerHTML: el.outerHTML,
+      textContent: el.textContent
+    }));
+    logInfo('Clicking on element with details:', linkDetails);
+
+    await targetLink.click();
 
     // Wait for the article page to load
     await page.waitForLoadState('networkidle');
 
-    console.log('Extracting content...');
+    logInfo('Extracting content...');
     // Use the specific locator provided by the user
     const articleLocator = page.locator('.article-main-content');
     await articleLocator.waitFor({ state: 'visible' });
     const articleContent = await articleLocator.innerText();
 
-    console.log('Logging out...');
+    logInfo('Logging out...');
     await page.locator('.pp-avatar.pp-avatar-sm').click();
     await page.getByRole('link', { name: '登出' }).click();
 
     return articleContent;
   } catch (error) {
-    console.error('Error during scraping:', error);
+    logError('Error during scraping:', error);
     throw error;
   } finally {
     await browser.close();
+  }
+}
+
   }
 }

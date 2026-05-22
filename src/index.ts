@@ -2,11 +2,12 @@ import { validateConfig } from './config.js';
 import { scrapeArticle } from './scraper.js';
 import { summarizeContent } from './summarizer.js';
 import { sendSummaryToLine } from './lineClient.js';
+import { logInfo, logError } from './logger.js';
 
 async function main() {
   try {
-    console.log('--- Starting News Reporter ---');
-    
+    logInfo('--- Starting News Reporter ---');
+
     // 1. Validate environment variables
     validateConfig();
 
@@ -15,21 +16,21 @@ async function main() {
     if (!content) {
       throw new Error('No article content found.');
     }
-    console.log(`Article content extracted (${content.length} characters).`);
+    logInfo(`Article content extracted (${content.length} characters).`);
 
     // 3. Summarize the content
     const summary = await summarizeContent(content);
-    console.log('Summary generated.');
+    logInfo('Summary generated.');
 
     // 4. Send to LINE
     await sendSummaryToLine(summary);
 
-    console.log('--- News Reporter Finished Successfully ---');
+    logInfo('--- News Reporter Finished Successfully ---');
   } catch (error) {
-    console.error('--- News Reporter Failed ---');
-    console.error(error);
+    logError('--- News Reporter Failed ---', error);
     process.exit(1);
   }
 }
 
 main();
+
