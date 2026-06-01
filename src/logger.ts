@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { Page } from 'playwright';
 
 const logDir = 'logs';
 if (!fs.existsSync(logDir)) {
@@ -29,4 +30,22 @@ export function logError(message: string, error?: any) {
   
   process.stderr.write(logEntry);
   logStream.write(logEntry);
+}
+t(page: Page, namePrefix: string): Promise<string | null> {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `${namePrefix}-${timestamp}.png`;
+    const filePath = path.join(logDir, filename);
+
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir);
+    }
+
+    await page.screenshot({ path: filePath, fullPage: true });
+    logInfo(`Screenshot saved to ${filePath}`);
+    return filePath;
+  } catch (error) {
+    logError('Failed to capture screenshot:', error);
+    return null;
+  }
 }
