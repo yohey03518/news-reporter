@@ -1,6 +1,6 @@
 import { chromium, Browser, Page } from 'playwright';
 import { config } from './config.js';
-import { logInfo, logError } from './logger.js';
+import { logInfo, logError, logScreenshot } from './logger.js';
 
 export async function scrapeArticle(): Promise<string> {
   const browser: Browser = await chromium.launch({ headless: false }); // Set to true for production

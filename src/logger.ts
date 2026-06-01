@@ -31,7 +31,8 @@ export function logError(message: string, error?: any) {
   process.stderr.write(logEntry);
   logStream.write(logEntry);
 }
-t(page: Page, namePrefix: string): Promise<string | null> {
+
+export async function logScreenshot(page: Page, namePrefix: string): Promise<string | null> {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `${namePrefix}-${timestamp}.png`;
