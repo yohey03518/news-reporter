@@ -70,6 +70,11 @@ export async function scrapeArticle(): Promise<string> {
     return articleContent;
   } catch (error) {
     logError('Error during scraping:', error);
+    try {
+      await logScreenshot(page, 'error-scrape');
+    } catch (screenshotError) {
+      logError('Failed to take error screenshot:', screenshotError);
+    }
     throw error;
   } finally {
     await browser.close();
