@@ -12,6 +12,9 @@ export const config = {
     channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
     userIds: (process.env.LINE_USER_IDS || '').split(',').map(id => id.trim()).filter(id => id),
   },
+  imgbb: {
+    apiKey: process.env.IMGBB_API_KEY || '',
+  },
 };
 
 export function validateConfig() {
@@ -20,6 +23,7 @@ export function validateConfig() {
   if (!config.pressplay.password) missing.push('PRESSPLAY_PASSWORD');
   if (!config.line.channelAccessToken) missing.push('LINE_CHANNEL_ACCESS_TOKEN');
   if (config.line.userIds.length === 0) missing.push('LINE_USER_IDS');
+  if (!config.imgbb.apiKey) missing.push('IMGBB_API_KEY');
 
   if (missing.length > 0) {
     throw new Error(`Missing environment variables: ${missing.join(', ')}`);

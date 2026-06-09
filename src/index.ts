@@ -1,6 +1,7 @@
 import { validateConfig } from './config.js';
 import { scrapeArticle } from './scraper.js';
 import { summarizeContent } from './summarizer.js';
+import { uploadImage } from './uploader.js';
 import { sendSummaryToLine } from './lineClient.js';
 import { logInfo, logError } from './logger.js';
 
@@ -11,8 +12,8 @@ async function main() {
     // 1. Validate environment variables
     validateConfig();
 
-    // 2. Scrape the article
-    const content = await scrapeArticle();
+    // 2. Scrape the article and capture screenshot
+    const { content, screenshotPath } = await scrapeArticle();
     if (!content) {
       throw new Error('No article content found.');
     }
@@ -22,8 +23,14 @@ async function main() {
     const summary = await summarizeContent(content);
     logInfo('Summary generated.');
 
-    // 4. Send to LINE
-    await sendSummaryToLine(summary);
+    // 4. Upload screenshot
+    let imageUrl: string | null = null;
+    if (screenshotPath) {
+      imageUrl = await uploadImage(screenshotPath);
+    }
+
+    // 5. Send to LINE
+    await sendSummaryToLine(summary, imageUrl);
 
     logInfo('--- News Reporter Finished Successfully ---');
   } catch (error) {

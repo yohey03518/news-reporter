@@ -1,8 +1,13 @@
-import { chromium, Browser, Page } from 'playwright';
+import { chromium, devices, Browser, Page } from 'playwright';
 import { config } from './config.js';
 import { logInfo, logError, logScreenshot } from './logger.js';
 
-export async function scrapeArticle(): Promise<string> {
+export interface ScrapeResult {
+  content: string;
+  screenshotPath: string | null;
+}
+
+export async function scrapeArticle(): Promise<ScrapeResult> {
   const browser: Browser = await chromium.launch({ headless: false }); // Set to true for production
   const context = await browser.newContext();
   const page: Page = await context.newPage();
@@ -60,6 +65,32 @@ export async function scrapeArticle(): Promise<string> {
     const articleContent = await articleLocator.innerText();
     await page.waitForTimeout(STEP_DELAY_MS);
 
+    const articleUrl = page.url();
+    logInfo(`Article URL captured: ${articleUrl}`);
+
+    let screenshotPath: string | null = null;
+    try {
+      logInfo('Capturing mobile screenshot...');
+      const storageState = await context.storageState();
+      const mobileContext = await browser.newContext({
+        ...devices['iPhone 12'],
+        storageState: storageState,
+      });
+      const mobilePage = await mobileContext.newPage();
+
+      logInfo(`Navigating mobile page to ${articleUrl}...`);
+      await mobilePage.goto(articleUrl);
+
+      const mobileArticleLocator = mobilePage.locator('.article-main-content');
+      await mobileArticleLocator.waitFor({ state: 'visible' });
+      await mobilePage.waitForTimeout(STEP_DELAY_MS);
+
+      screenshotPath = await logScreenshot(mobilePage, 'mobile-article');
+      await mobileContext.close();
+    } catch (screenshotError) {
+      logError('Failed to capture mobile screenshot:', screenshotError);
+    }
+
     logInfo('Logging out...');
     await page.locator('.pp-avatar.pp-avatar-sm').click();
     await page.waitForTimeout(STEP_DELAY_MS);
@@ -67,7 +98,10 @@ export async function scrapeArticle(): Promise<string> {
     await page.getByRole('link', { name: '登出' }).click();
     await page.waitForTimeout(STEP_DELAY_MS);
 
-    return articleContent;
+    return {
+      content: articleContent,
+      screenshotPath,
+    };
   } catch (error) {
     logError('Error during scraping:', error);
     try {

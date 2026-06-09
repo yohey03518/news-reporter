@@ -4,9 +4,21 @@ import { logInfo, logError } from './logger.js';
 
 const { MessagingApiClient } = messagingApi;
 
-export async function sendSummaryToLine(summary: string): Promise<void> {
-  if (!summary) {
-    logInfo('No summary to send.');
+export async function sendSummaryToLine(summary: string, imageUrl?: string | null): Promise<void> {
+  const messages: any[] = [];
+  if (summary) {
+    messages.push({ type: 'text', text: summary });
+  }
+  if (imageUrl) {
+    messages.push({
+      type: 'image',
+      originalContentUrl: imageUrl,
+      previewImageUrl: 'https://picsum.photos/200',
+    });
+  }
+
+  if (messages.length === 0) {
+    logInfo('No summary or image to send.');
     return;
   }
 
@@ -14,13 +26,13 @@ export async function sendSummaryToLine(summary: string): Promise<void> {
     channelAccessToken: config.line.channelAccessToken,
   });
 
-  logInfo(`Sending summary to ${config.line.userIds.length} users...`);
+  logInfo(`Sending messages to ${config.line.userIds.length} users...`);
 
   for (const userId of config.line.userIds) {
     try {
       await client.pushMessage({
         to: userId,
-        messages: [{ type: 'text', text: summary }],
+        messages,
       });
       logInfo(`Successfully sent to user: ${userId}`);
     } catch (error) {
