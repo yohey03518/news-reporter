@@ -6,7 +6,7 @@ import { logInfo, logError } from './logger.js';
  * Uploads a local image file to Imgbb.
  * Returns the public direct image URL, or null if upload fails.
  */
-export async function uploadImage(filePath: string): Promise<string | null> {
+export async function uploadImage(filePath: string, expirationSeconds: number = 86400): Promise<string | null> {
   try {
     if (!config.imgbb.apiKey) {
       logInfo('Imgbb API key is missing. Skipping upload.');
@@ -23,8 +23,8 @@ export async function uploadImage(filePath: string): Promise<string | null> {
 
     const body = new URLSearchParams();
     body.append('image', base64Image);
-    // Auto-expire the image after 10 minutes (600 seconds) to ensure cleanup
-    body.append('expiration', '600');
+    // Auto-expire the image (default to 86400 seconds / 1 day)
+    body.append('expiration', expirationSeconds.toString());
 
     const response = await fetch(`https://api.imgbb.com/1/upload?key=${config.imgbb.apiKey}`, {
       method: 'POST',

@@ -1,7 +1,6 @@
 import { validateConfig } from './config.js';
 import { scrapeArticle } from './scraper.js';
 import { summarizeContent } from './summarizer.js';
-import { uploadImage } from './uploader.js';
 import { sendSummaryToLine } from './lineClient.js';
 import { logInfo, logError } from './logger.js';
 
@@ -23,14 +22,8 @@ async function main() {
     const summary = await summarizeContent(content);
     logInfo('Summary generated.');
 
-    // 4. Upload screenshot
-    let imageUrl: string | null = null;
-    if (screenshotPath) {
-      imageUrl = await uploadImage(screenshotPath);
-    }
-
-    // 5. Send to LINE
-    await sendSummaryToLine(summary, imageUrl);
+    // 4. Send to LINE (handles screenshot checking, splitting, uploading, and sending)
+    await sendSummaryToLine(summary, screenshotPath);
 
     logInfo('--- News Reporter Finished Successfully ---');
   } catch (error) {
