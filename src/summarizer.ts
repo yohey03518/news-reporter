@@ -2,16 +2,19 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
-import os from 'os';
-import { logInfo, logError } from './logger.js';
+import { getLocalDateString, logInfo, logError } from './logger.js';
 
 const execPromise = promisify(exec);
 
-export async function summarizeContent(content: string): Promise<string> {
+export async function summarizeContent(contentOrPrompt: string, isPromptAlready: boolean = false): Promise<string> {
   logInfo('Calling AGY CLI for summary...');
 
-  // Use the specific summary prompt template provided by the user
-  const prompt = `請根據以下文章內容，按照指定格式進行總結，過程中可以先列出所有族群及個股，避免最後總結時有所遺漏。所有內容都不要自己腦補也不要自行推論，所有文字都從文章中做摘要：
+  const dateStr = getLocalDateString();
+  const promptFilePath = path.join('logs', `${dateStr}.txt`);
+
+  if (!isPromptAlready) {
+    // contentOrPrompt is raw content, format it as prompt
+    const prompt = `請根據以下文章內容，按照指定格式進行總結，過程中可以先列出所有族群及個股，避免最後總結時有所遺漏。所有內容都不要自己腦補也不要自行推論，所有文字都從文章中做摘要：
 
 {日期}水位建議：{持股水位建議}（{簡短理由}）
 
@@ -35,16 +38,20 @@ export async function summarizeContent(content: string): Promise<string> {
   - 午報變化：若作者（老王）提及後續有請假或是出國等情事會導致未來暫停發文，則在這邊簡短描述，若沒有相關內容則留空
 
 文章內容如下：
-${content}`;
+${contentOrPrompt}`;
 
-  const tempFilePath = path.join(os.tmpdir(), `agy-prompt-${Date.now()}.txt`);
+    try {
+      await fs.mkdir('logs', { recursive: true });
+      await fs.writeFile(promptFilePath, prompt, 'utf8');
+    } catch (error) {
+      logError('Error writing prompt cache file:', error);
+      throw new Error('Failed to cache prompt.');
+    }
+  }
 
   try {
-    // Write prompt to a temporary file
-    await fs.writeFile(tempFilePath, prompt, 'utf8');
-
-    // Call agy CLI reading from the file using shell expansion and detaching stdin to prevent hangs
-    const { stdout, stderr } = await execPromise(`agy -p "$(cat ${tempFilePath})"`);
+    // Call agy CLI reading from the cache file using shell expansion and detaching stdin to prevent hangs
+    const { stdout, stderr } = await execPromise(`agy -p "$(cat ${promptFilePath})"`);
 
     if (stderr) {
       logInfo('AGY CLI stderr:', stderr);
@@ -54,13 +61,6 @@ ${content}`;
   } catch (error) {
     logError('Error calling AGY CLI:', error);
     throw new Error('Failed to generate summary from AGY CLI.');
-  } finally {
-    // Clean up temp file
-    try {
-      await fs.unlink(tempFilePath);
-    } catch (e) {
-      // Ignore cleanup errors
-    }
   }
 }
 
