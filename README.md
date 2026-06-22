@@ -1,12 +1,12 @@
 # News Reporter
 
-A TypeScript console application that scrapes articles from PressPlay, summarizes them using the local Gemini CLI, and sends the summary to multiple LINE users.
+A TypeScript console application that scrapes articles from PressPlay, summarizes them using the local AGY CLI (`agy`), and sends the summary to multiple LINE users.
 
 ## Prerequisites
 
 - [pnpm](https://pnpm.io/)
 - [Playwright](https://playwright.dev/)
-- [Gemini CLI](https://github.com/google/gemini-cli) (installed and configured locally)
+- [AGY CLI](https://antigravity.google/docs/cli) (installed and configured locally)
 - LINE Channel Access Token
 
 ## Setup
@@ -38,7 +38,7 @@ After recording:
 2. Navigate to today's article.
 3. Extract the content.
 4. Log out.
-5. Provide the generated code to Gemini CLI to integrate it into the project.
+5. Provide the generated code to AGY CLI to integrate it into the project.
 
 ### Phase 2: Run the application
 
@@ -48,7 +48,7 @@ After recording:
    - `LINE_CHANNEL_ACCESS_TOKEN`
    - `LINE_USER_IDS` (comma-separated)
 
-2. Fill in your specific Gemini prompt in `src/summarizer.ts`.
+2. Fill in your specific summary prompt in `src/summarizer.ts`.
 
 3. Run the application:
    ```bash
@@ -59,6 +59,6 @@ After recording:
 
 - `src/index.ts`: Main orchestrator.
 - `src/scraper.ts`: Playwright logic for scraping PressPlay.
-- `src/summarizer.ts`: Wrapper for local Gemini CLI calls.
+- `src/summarizer.ts`: Wrapper for local AGY CLI calls.
 - `src/lineClient.ts`: LINE Messaging API client.
 - `src/config.ts`: Configuration and environment variable validation.

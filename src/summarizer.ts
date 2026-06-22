@@ -8,10 +8,10 @@ import { logInfo, logError } from './logger.js';
 const execPromise = promisify(exec);
 
 export async function summarizeContent(content: string): Promise<string> {
-  logInfo('Calling Gemini CLI for summary...');
+  logInfo('Calling AGY CLI for summary...');
 
-  // Use the specific Gemini prompt template provided by the user
-  const prompt = `請根據以下文章內容，按照指定格式進行總結，過程中可以先列出所有族群及個股，避免最後總結時有所遺漏：
+  // Use the specific summary prompt template provided by the user
+  const prompt = `請根據以下文章內容，按照指定格式進行總結，過程中可以先列出所有族群及個股，避免最後總結時有所遺漏。所有內容都不要自己腦補也不要自行推論，所有文字都從文章中做摘要：
 
 {日期}水位建議：{持股水位建議}（{簡短理由}）
 
@@ -23,6 +23,7 @@ export async function summarizeContent(content: string): Promise<string> {
     - {股票代號} {股票名稱} — {操作觀察重點／表現}
 
   - {總經資訊}
+  - {午報變化}
 
   填寫提示：
   - 日期：使用文章標題上的日期，格式為YYYY/MM/DD
@@ -31,33 +32,28 @@ export async function summarizeContent(content: string): Promise<string> {
   - 族群分類：文章有提到的族群都要列上來，依文章中提到的定位分類，若有提到轉弱族群亦需列上，此區僅列出台股
   - 個股條目：一律使用「代號 名稱 — 觀察重點」格式，每檔換行
   - 總經資訊：50 字內簡述總體經濟相關內容，不要自己腦補也不要自行推論，所有文字都從文章中做摘要
-
-  所有內容都不要自己腦補也不要自行推論，所有文字都從文章中做摘要
+  - 午報變化：若作者（老王）提及後續有請假或是出國等情事會導致未來暫停發文，則在這邊簡短描述，若沒有相關內容則留空
 
 文章內容如下：
 ${content}`;
 
-  const tempFilePath = path.join(os.tmpdir(), `gemini-prompt-${Date.now()}.txt`);
+  const tempFilePath = path.join(os.tmpdir(), `agy-prompt-${Date.now()}.txt`);
 
   try {
     // Write prompt to a temporary file
     await fs.writeFile(tempFilePath, prompt, 'utf8');
 
-    // Call gemini CLI reading from the file
-    // Adjust this command to match how your gemini CLI accepts file input
-    // If it supports stdin: cat tempFilePath | gemini
-    // If it supports a file argument: gemini --file tempFilePath
-    // Here we'll try a common pattern: gemini < tempFilePath
-    const { stdout, stderr } = await execPromise(`gemini < "${tempFilePath}"`);
+    // Call agy CLI reading from the file using shell expansion and detaching stdin to prevent hangs
+    const { stdout, stderr } = await execPromise(`agy -p "$(cat ${tempFilePath})"`);
 
     if (stderr) {
-      logInfo('Gemini CLI stderr:', stderr);
+      logInfo('AGY CLI stderr:', stderr);
     }
 
     return stdout.trim();
   } catch (error) {
-    logError('Error calling Gemini CLI:', error);
-    throw new Error('Failed to generate summary from Gemini CLI.');
+    logError('Error calling AGY CLI:', error);
+    throw new Error('Failed to generate summary from AGY CLI.');
   } finally {
     // Clean up temp file
     try {

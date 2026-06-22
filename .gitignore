@@ -6,3 +6,6 @@ playwright-report
 blob-report
 playwright/.cache
 logs/
+docs/superpowers/
+.agents/
+.antigravitycli/
