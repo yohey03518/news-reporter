@@ -3,7 +3,7 @@ import path from 'path';
 import { chromium } from 'playwright';
 import { messagingApi } from '@line/bot-sdk';
 import { config } from './config.js';
-import { logInfo, logError } from './logger.js';
+import { getLocalDateString, logInfo, logError } from './logger.js';
 import { uploadImage } from './uploader.js';
 
 const { MessagingApiClient } = messagingApi;
@@ -120,8 +120,12 @@ async function splitImage(filePath: string): Promise<[string, string]> {
   }
 }
 
-export async function sendSummaryToLine(summary: string, screenshotPath?: string | null): Promise<void> {
-  const imageUrls: string[] = [];
+export async function sendSummaryToLine(
+  summary: string, 
+  screenshotPath?: string | null,
+  cachedImageUrls?: string[]
+): Promise<void> {
+  const imageUrls: string[] = cachedImageUrls ? [...cachedImageUrls] : [];
   const NINE_MB = 9 * 1024 * 1024; // 9MB limit for safety buffer
 
   if (screenshotPath && fs.existsSync(screenshotPath)) {
@@ -152,6 +156,18 @@ export async function sendSummaryToLine(summary: string, screenshotPath?: string
         logInfo(`Screenshot size (${sizeInMB.toFixed(2)} MB) is within limits. Uploading...`);
         const url = await uploadImage(screenshotPath);
         if (url) imageUrls.push(url);
+      }
+
+      // Cache the uploaded URLs
+      if (imageUrls.length > 0) {
+        try {
+          const dateStr = getLocalDateString();
+          const screenshotUrlsPath = path.join('logs', `${dateStr}-screenshot-urls.txt`);
+          fs.writeFileSync(screenshotUrlsPath, imageUrls.join('\n'), 'utf8');
+          logInfo(`Cached uploaded screenshot URLs to ${screenshotUrlsPath}`);
+        } catch (cacheError) {
+          logError('Failed to cache screenshot URLs:', cacheError);
+        }
       }
 
       // Clean up the original screenshot file to save space
