@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.erwin.news-reporter</string>
+
+    <!--
+      Run via launchd (NOT cron) on macOS.
+
+      Why: `agy` reads its OAuth credentials through the macOS *login Keychain*
+      ("Antigravity Safe Storage" / "gemini" items). The `cron` daemon runs in a
+      separate security session that cannot reach the login Keychain, so `agy`
+      thinks it is logged out and demands re-login. A LaunchAgent runs inside the
+      user's GUI (Aqua) login session, so it has Keychain access and `agy` stays
+      authenticated — as long as the user is logged in at trigger time.
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/erwin.chang/git/news-reporter/run.sh</string>
+    </array>
+
+    <!-- Mon–Fri at 12:45 (Weekday: 1=Mon … 5=Fri) -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>45</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>45</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>45</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>12</integer><key>Minute</key><integer>45</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>00</integer><key>Minute</key><integer>45</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/erwin.chang/git/news-reporter/logs/cron.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/erwin.chang/git/news-reporter/logs/cron.log</string>
+</dict>
+</plist>

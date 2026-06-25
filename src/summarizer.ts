@@ -80,9 +80,26 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
     }
 
     const stdout = await fs.readFile(outFile, 'utf8');
-    return stdout.split('---')[1].trim();
+    const summary = stdout.split('---')[1].trim();
+    logInfo('AGY CLI summary:', summary);
+    return summary;
   } catch (error) {
+    let stderrContent = '';
+    let stdoutContent = '';
+    try {
+      stderrContent = await fs.readFile(errFile, 'utf8');
+    } catch {}
+    try {
+      stdoutContent = await fs.readFile(outFile, 'utf8');
+    } catch {}
+
     logError('Error calling AGY CLI:', error);
+    if (stderrContent.trim()) {
+      logError('AGY CLI stderr output:', stderrContent.trim());
+    }
+    if (stdoutContent.trim()) {
+      logError('AGY CLI stdout output:', stdoutContent.trim());
+    }
     throw new Error('Failed to generate summary from AGY CLI.');
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });

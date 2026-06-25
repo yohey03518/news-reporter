@@ -55,6 +55,54 @@ After recording:
    pnpm start
    ```
 
+## Scheduling (macOS launchd)
+
+On macOS the job must be scheduled with **launchd**, not `cron`. The schedule
+(days/time) lives in `deploy/com.erwin.news-reporter.plist` under
+`StartCalendarInterval` — edit it there, then re-run the deploy script.
+
+### Why not cron
+
+`agy` reads its OAuth credentials through the macOS **login Keychain** (the
+`Antigravity Safe Storage` / `gemini` Keychain items), not just from
+`~/.gemini/oauth_creds.json`. The `cron` daemon runs in a *separate security
+session* that cannot reach the login Keychain, so `agy` thinks it is logged out
+and demands re-login — even though running `agy` manually in a Terminal works
+fine (your Terminal is inside the GUI login session, where the Keychain is
+unlocked and reachable).
+
+A **LaunchAgent** runs inside the user's GUI (Aqua) login session, so it inherits
+Keychain access and `agy` stays authenticated. Setting `HOME`/`PATH` in `run.sh`
+is necessary but **not sufficient** — the Keychain session is the real blocker.
+
+> Requirement: you must be **logged in** to the Mac at trigger time (screen
+> locked is OK; logged out or shut down is not).
+
+### Deploy
+
+The LaunchAgent definition is versioned at `deploy/com.erwin.news-reporter.plist`
+and installed with `deploy/install-launchd.sh`. Run these from your normal
+Terminal (so `launchctl` targets your own `gui/$(id -u)` login session):
+
+```bash
+# Install: copy plist into ~/Library/LaunchAgents, bootstrap it into your GUI
+# session, and remove the old crontab entry (if any).
+deploy/install-launchd.sh
+
+# Verify it loaded
+deploy/install-launchd.sh status
+
+# Trigger one run now to confirm agy stays logged in
+deploy/install-launchd.sh run
+tail -f logs/cron.log
+
+# Remove the schedule
+deploy/install-launchd.sh uninstall
+```
+
+If a Keychain prompt ever appears on the first run, choose **Always Allow** to
+add `agy` to the Keychain item's ACL.
+
 ## Project Structure
 
 - `src/index.ts`: Main orchestrator.
