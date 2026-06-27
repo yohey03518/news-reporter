@@ -59,37 +59,28 @@ export async function scrapeArticle(): Promise<ScrapeResult> {
     await targetLink.click();
     await page.waitForTimeout(STEP_DELAY_MS);
 
-    logInfo('Extracting content...');
-    const articleLocator = page.locator('.article-main-content');
-    await articleLocator.waitFor({ state: 'visible' });
-    const articleContent = await articleLocator.innerText();
-    await page.waitForTimeout(STEP_DELAY_MS);
-
     const articleUrl = page.url();
     logInfo(`Article URL captured: ${articleUrl}`);
 
     let screenshotPath: string | null = null;
-    try {
-      logInfo('Capturing mobile screenshot...');
-      const storageState = await context.storageState();
-      const mobileContext = await browser.newContext({
-        ...devices['iPhone 12'],
-        storageState: storageState,
-      });
-      const mobilePage = await mobileContext.newPage();
+    logInfo('Capturing mobile screenshot...');
+    const storageState = await context.storageState();
+    const mobileContext = await browser.newContext({
+      ...devices['iPhone 12'],
+      storageState: storageState,
+    });
+    const mobilePage = await mobileContext.newPage();
 
-      logInfo(`Navigating mobile page to ${articleUrl}...`);
-      await mobilePage.goto(articleUrl);
+    logInfo(`Navigating mobile page to ${articleUrl}...`);
+    await mobilePage.goto(articleUrl);
 
-      const mobileArticleLocator = mobilePage.locator('.article-main-content');
-      await mobileArticleLocator.waitFor({ state: 'visible' });
-      await mobilePage.waitForTimeout(STEP_DELAY_MS);
+    const mobileArticleLocator = mobilePage.locator('.article-main-content');
+    await mobileArticleLocator.waitFor({ state: 'visible' });
+    await mobilePage.waitForTimeout(STEP_DELAY_MS);
+    const articleContent = await mobileArticleLocator.innerText();
 
-      screenshotPath = await logScreenshot(mobilePage, 'mobile-article');
-      await mobileContext.close();
-    } catch (screenshotError) {
-      logError('Failed to capture mobile screenshot:', screenshotError);
-    }
+    screenshotPath = await logScreenshot(mobilePage, 'mobile-article');
+    await mobileContext.close();
 
     return {
       content: articleContent,
