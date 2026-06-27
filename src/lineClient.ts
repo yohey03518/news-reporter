@@ -3,7 +3,7 @@ import path from 'path';
 import { chromium } from 'playwright';
 import { messagingApi } from '@line/bot-sdk';
 import { config } from './config.js';
-import { getLocalDateString, logInfo, logError } from './logger.js';
+import { getLocalDateString, logInfo, logError, logDir } from './logger.js';
 import { uploadImage } from './uploader.js';
 
 const { MessagingApiClient } = messagingApi;
@@ -162,7 +162,7 @@ export async function sendSummaryToLine(
       if (imageUrls.length > 0) {
         try {
           const dateStr = getLocalDateString();
-          const screenshotUrlsPath = path.join('logs', `${dateStr}-screenshot-urls.txt`);
+          const screenshotUrlsPath = path.join(logDir, `${dateStr}-screenshot-urls.txt`);
           fs.writeFileSync(screenshotUrlsPath, imageUrls.join('\n'), 'utf8');
           logInfo(`Cached uploaded screenshot URLs to ${screenshotUrlsPath}`);
         } catch (cacheError) {

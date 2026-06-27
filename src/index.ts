@@ -4,7 +4,7 @@ import { validateConfig } from './config.js';
 import { scrapeArticle } from './scraper.js';
 import { summarizeContent } from './summarizer.js';
 import { sendSummaryToLine } from './lineClient.js';
-import { getLocalDateString, logInfo, logError } from './logger.js';
+import { getLocalDateString, logInfo, logError, logDir } from './logger.js';
 
 async function main() {
   try {
@@ -14,8 +14,8 @@ async function main() {
     validateConfig();
 
     const dateStr = getLocalDateString();
-    const promptFilePath = path.join('logs', `${dateStr}.txt`);
-    const screenshotUrlsPath = path.join('logs', `${dateStr}-screenshot-urls.txt`);
+    const promptFilePath = path.join(logDir, `${dateStr}.txt`);
+    const screenshotUrlsPath = path.join(logDir, `${dateStr}-screenshot-urls.txt`);
 
     let summary: string;
     let cachedPromptExists = false;

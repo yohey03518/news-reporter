@@ -55,6 +55,41 @@ After recording:
    pnpm start
    ```
 
+## Running with Docker (Linux/Ubuntu Host Only)
+
+> [!NOTE]
+> This Docker containerization setup is designed to run on a Linux/Ubuntu host (such as an Ubuntu Server) where the `agy` CLI is already authenticated on the host.
+> 
+> **Why Linux/Ubuntu only?**
+> - On macOS, the host `agy` CLI stores its credentials inside the secure Apple Keychain, which the container cannot access.
+> - On Linux/Ubuntu, `agy` stores its credentials as flat files inside `~/.gemini/`. Mounting this folder allows the containerized `agy` to reuse the host's authentication session directly.
+
+### 1. Build the Docker Image
+
+Run the following command from the project root directory:
+
+```bash
+docker build -t news-reporter .
+```
+
+### 2. Run the Docker Container
+
+To run the container, you need to pass your environment variables and mount the host's `~/.gemini` folder (which contains the active OAuth session files) and the log folder:
+
+```bash
+docker run --env-file .env \
+  -v ~/.gemini:/root/.gemini \
+  -v $(pwd)/logs:/app/logs \
+  news-reporter
+```
+
+*Note: Replace `~/.gemini` with the absolute path to the authenticated user's home `.gemini` folder on your server (e.g., `/home/ubuntu/.gemini`).*
+
+**Volume Mappings & Arguments:**
+- `--env-file .env`: Loads environment variables (like `PRESSPLAY_LOGIN_NAME`, `PRESSPLAY_PASSWORD`, `LOG_DIR`, `HEADLESS`, etc.) from your local `.env` file.
+- `-v ~/.gemini:/root/.gemini`: Mounts the authenticated credentials from the host to `/root/.gemini` so `agy` inside the container inherits the login state.
+- `-v $(pwd)/logs:/app/logs`: Mounts your local log directory to the container's log directory so that generated logs, screenshots, and cached prompt text files are persisted on your host machine.
+
 ## Scheduling (macOS launchd)
 
 On macOS the job must be scheduled with **launchd**, not `cron`. The schedule

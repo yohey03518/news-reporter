@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { getLocalDateString, logInfo, logError } from './logger.js';
+import { getLocalDateString, logInfo, logError, logDir } from './logger.js';
 
 const execPromise = promisify(exec);
 
@@ -11,7 +11,7 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
   logInfo('Calling AGY CLI for summary...');
 
   const dateStr = getLocalDateString();
-  const promptFilePath = path.join('logs', `${dateStr}.txt`);
+  const promptFilePath = path.join(logDir, `${dateStr}.txt`);
 
   if (!isPromptAlready) {
     // contentOrPrompt is raw content, format it as prompt
@@ -48,7 +48,7 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
 `;
 
     try {
-      await fs.mkdir('logs', { recursive: true });
+      await fs.mkdir(logDir, { recursive: true });
       await fs.writeFile(promptFilePath, prompt, 'utf8');
     } catch (error) {
       logError('Error writing prompt cache file:', error);

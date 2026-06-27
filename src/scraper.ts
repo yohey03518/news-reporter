@@ -8,7 +8,9 @@ export interface ScrapeResult {
 }
 
 export async function scrapeArticle(): Promise<ScrapeResult> {
-  const browser: Browser = await chromium.launch({ headless: false }); // Set to true for production
+  const browser: Browser = await chromium.launch({
+    headless: process.env.HEADLESS !== 'false'
+  });
   const context = await browser.newContext();
   const page: Page = await context.newPage();
 
@@ -42,11 +44,9 @@ export async function scrapeArticle(): Promise<ScrapeResult> {
     await page.waitForURL(/.*pressplay.cc\/.*/);
     await page.waitForTimeout(STEP_DELAY_MS);
 
-    logInfo('Navigating to "My Learning"...');
-    await page.getByRole('link', { name: '我的學習' }).nth(2).click();
+    await page.goto('https://www.pressplay.cc/member/learning/projects/CF6DA5CB5BE8C843FE37526843D3E126/articles');
+    await page.waitForURL(/.*pressplay.cc\/.*/);
     await page.waitForTimeout(STEP_DELAY_MS);
-
-    logInfo('Navigating to the latest article...');
 
     const targetLink = page.locator('.article-card').getByRole('link').nth(0);
     const linkDetails = await targetLink.evaluate((el: HTMLAnchorElement) => ({
@@ -91,13 +91,6 @@ export async function scrapeArticle(): Promise<ScrapeResult> {
       logError('Failed to capture mobile screenshot:', screenshotError);
     }
 
-    logInfo('Logging out...');
-    await page.locator('.pp-avatar.pp-avatar-sm').click();
-    await page.waitForTimeout(STEP_DELAY_MS);
-
-    await page.getByRole('link', { name: '登出' }).click();
-    await page.waitForTimeout(STEP_DELAY_MS);
-
     return {
       content: articleContent,
       screenshotPath,
@@ -111,6 +104,16 @@ export async function scrapeArticle(): Promise<ScrapeResult> {
     }
     throw error;
   } finally {
+    try {
+      logInfo('Logging out...');
+      await page.locator('.pp-avatar.pp-avatar-sm').click();
+      await page.waitForTimeout(STEP_DELAY_MS);
+
+      await page.getByRole('link', { name: '登出' }).click();
+      await page.waitForTimeout(STEP_DELAY_MS);
+    } catch (logoutError) {
+      logError('Failed to log out:', logoutError);
+    }
     await browser.close();
   }
 }

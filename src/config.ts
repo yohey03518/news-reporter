@@ -4,6 +4,7 @@ import path from 'path';
 dotenv.config();
 
 export const config = {
+  logDir: process.env.LOG_DIR || 'logs',
   pressplay: {
     loginName: process.env.PRESSPLAY_LOGIN_NAME || '',
     password: process.env.PRESSPLAY_PASSWORD || '',

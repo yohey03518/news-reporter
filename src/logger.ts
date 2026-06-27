@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { Page } from 'playwright';
 
-const logDir = 'logs';
+export const logDir = process.env.LOG_DIR || 'logs';
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir);
 }
