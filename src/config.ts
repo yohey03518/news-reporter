@@ -16,9 +16,6 @@ export const config = {
   imgbb: {
     apiKey: process.env.IMGBB_API_KEY || '',
   },
-  gemini: {
-    apiKey: process.env.GEMINI_API_KEY || '',
-  },
 };
 
 export function validateConfig() {
