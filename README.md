@@ -23,6 +23,9 @@ A TypeScript console application that scrapes articles from PressPlay, summarize
    cp .env.example .env
    ```
 
+3. Configure Gemini API (Optional):
+   If you have a Gemini API key, you can set it as `GEMINI_API_KEY` in your `.env` file. If present, the application will use the Gemini API (`gemini-2.5-flash`) directly to generate summaries. Otherwise, it defaults to using the local `agy` CLI.
+
 ## Usage
 
 ### Phase 1: Record Playwright Steps
@@ -55,14 +58,9 @@ After recording:
    pnpm start
    ```
 
-## Running with Docker (Linux/Ubuntu Host Only)
+## Running with Docker
 
-> [!NOTE]
-> This Docker containerization setup is designed to run on a Linux/Ubuntu host (such as an Ubuntu Server) where the `agy` CLI is already authenticated on the host.
-> 
-> **Why Linux/Ubuntu only?**
-> - On macOS, the host `agy` CLI stores its credentials inside the secure Apple Keychain, which the container cannot access.
-> - On Linux/Ubuntu, `agy` stores its credentials as flat files inside `~/.gemini/`. Mounting this folder allows the containerized `agy` to reuse the host's authentication session directly.
+Using the `GEMINI_API_KEY` environment variable is the recommended way to run this application inside a Docker container. This bypasses the need for the local `agy` CLI or mounting any host credentials.
 
 ### 1. Build the Docker Image
 
@@ -74,21 +72,18 @@ docker build -t news-reporter .
 
 ### 2. Run the Docker Container
 
-To run the container, you need to pass your environment variables and mount the host's `~/.gemini` folder (which contains the active OAuth session files) and the log folder:
+Ensure your `.env` file contains `GEMINI_API_KEY`. Then start the container:
 
 ```bash
 docker run --env-file .env \
-  -v ~/.gemini:/root/.gemini \
   -v $(pwd)/logs:/app/logs \
   news-reporter
 ```
 
-*Note: Replace `~/.gemini` with the absolute path to the authenticated user's home `.gemini` folder on your server (e.g., `/home/ubuntu/.gemini`).*
+**Arguments & Volume Mappings:**
+- `--env-file .env`: Loads environment variables (like `PRESSPLAY_LOGIN_NAME`, `PRESSPLAY_PASSWORD`, `GEMINI_API_KEY`, `LINE_CHANNEL_ACCESS_TOKEN`, etc.) from your `.env` file.
+- `-v $(pwd)/logs:/app/logs`: Mounts your local log directory to the container so that generated logs, screenshots, and cache files are persisted on your host machine.
 
-**Volume Mappings & Arguments:**
-- `--env-file .env`: Loads environment variables (like `PRESSPLAY_LOGIN_NAME`, `PRESSPLAY_PASSWORD`, `LOG_DIR`, `HEADLESS`, etc.) from your local `.env` file.
-- `-v ~/.gemini:/root/.gemini`: Mounts the authenticated credentials from the host to `/root/.gemini` so `agy` inside the container inherits the login state.
-- `-v $(pwd)/logs:/app/logs`: Mounts your local log directory to the container's log directory so that generated logs, screenshots, and cached prompt text files are persisted on your host machine.
 
 ## Scheduling (macOS launchd)
 

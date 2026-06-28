@@ -4,18 +4,58 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { getLocalDateString, logInfo, logError, logDir } from './logger.js';
+import { config } from './config.js';
 
 const execPromise = promisify(exec);
 
-export async function summarizeContent(contentOrPrompt: string, isPromptAlready: boolean = false): Promise<string> {
-  logInfo('Calling AGY CLI for summary...');
+async function summarizeWithGeminiAPI(prompt: string, apiKey: string): Promise<string> {
+  logInfo('Calling Gemini API (gemini-2.5-flash) for summary...');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  const data = await response.json() as any;
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error(`Invalid response structure from Gemini API: ${JSON.stringify(data)}`);
+  }
+
+  // Split thinking process from summary using the --- separator
+  const parts = text.split('---');
+  if (parts.length < 2) {
+    logInfo('Warning: "---" separator not found in Gemini API response.');
+    return text.trim();
+  }
+  const summary = parts.slice(1).join('---').trim();
+  logInfo('Gemini API summary generated successfully.');
+  return summary;
+}
+
+export async function summarizeContent(contentOrPrompt: string, isPromptAlready: boolean = false): Promise<string> {
   const dateStr = getLocalDateString();
   const promptFilePath = path.join(logDir, `${dateStr}.txt`);
+  let prompt: string;
 
   if (!isPromptAlready) {
     // contentOrPrompt is raw content, format it as prompt
-    const prompt = `請根據以下文章內容，按照指定格式進行總結，思考過程中可以先列出所有族群及個股(含ETF)，避免最後總結時有所遺漏。所有內容都不要自己腦補也不要自行推論，所有文字都從文章中做摘要：
+    prompt = `請根據以下文章內容，按照指定格式進行總結，思考過程中可以先列出所有族群及個股(含ETF)，避免最後總結時有所遺漏。所有內容都不要自己腦補也不要自行推論，所有文字都從文章中做摘要：
 文章內容如下：
 \`\`\`${contentOrPrompt}\`\`\`
 
@@ -54,22 +94,20 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
       logError('Error writing prompt cache file:', error);
       throw new Error('Failed to cache prompt.');
     }
+  } else {
+    prompt = contentOrPrompt;
   }
 
-  // `agy` forks a long-lived background daemon that inherits its stdout. When
-  // the output is captured through a pipe (exec's default), that pipe never
-  // reaches EOF — the daemon keeps the write-end open after `agy` itself exits —
-  // so the call hangs forever. The fix: give `agy` /dev/null for stdin
-  // (immediate EOF) and redirect its stdout/stderr to files, so the daemon
-  // inherits *file* descriptors instead of Node's pipe. We then read the result
-  // back from the files.
+  if (config.gemini.apiKey) {
+    return await summarizeWithGeminiAPI(prompt, config.gemini.apiKey);
+  }
+
+  logInfo('Calling AGY CLI for summary...');
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'agy-'));
   const outFile = path.join(tmpDir, 'out.txt');
   const errFile = path.join(tmpDir, 'err.txt');
 
   try {
-    // Read the prompt from the cache file via shell expansion; redirect stdio
-    // to files so the lingering daemon can't hold Node's stdout pipe open.
     await execPromise(
       `agy -p "$(cat ${promptFilePath})" < /dev/null > "${outFile}" 2> "${errFile}"`,
     );
@@ -80,7 +118,12 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
     }
 
     const stdout = await fs.readFile(outFile, 'utf8');
-    const summary = stdout.split('---')[1].trim();
+    const parts = stdout.split('---');
+    if (parts.length < 2) {
+      logInfo('Warning: "---" separator not found in AGY CLI response.');
+      return stdout.trim();
+    }
+    const summary = parts.slice(1).join('---').trim();
     logInfo('AGY CLI summary:', summary);
     return summary;
   } catch (error) {
@@ -105,4 +148,3 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
 }
-
