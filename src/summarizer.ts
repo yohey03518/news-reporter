@@ -67,33 +67,55 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
   const outFile = path.join(tmpDir, 'out.txt');
   const errFile = path.join(tmpDir, 'err.txt');
 
+  let stdoutContent = '';
+  let stderrContent = '';
+  let commandFailed = false;
+  let commandError: any = null;
+
   try {
     // Read the prompt from the cache file via shell expansion; redirect stdio
     // to files so the lingering daemon can't hold Node's stdout pipe open.
     await execPromise(
       `agy -p "$(cat ${promptFilePath})" < /dev/null > "${outFile}" 2> "${errFile}"`,
     );
-
-    const stderr = (await fs.readFile(errFile, 'utf8')).trim();
-    if (stderr) {
-      logInfo('AGY CLI stderr:', stderr);
-    }
-
-    const stdout = await fs.readFile(outFile, 'utf8');
-    const summary = stdout.split('---')[1].trim();
-    logInfo('AGY CLI summary:', summary);
-    return summary;
   } catch (error) {
-    let stderrContent = '';
-    let stdoutContent = '';
-    try {
-      stderrContent = await fs.readFile(errFile, 'utf8');
-    } catch {}
-    try {
-      stdoutContent = await fs.readFile(outFile, 'utf8');
-    } catch {}
+    commandFailed = true;
+    commandError = error;
+  }
 
-    logError('Error calling AGY CLI:', error);
+  try {
+    stdoutContent = await fs.readFile(outFile, 'utf8');
+  } catch (e) {
+    logError('Failed to read stdout file:', e);
+  }
+  try {
+    stderrContent = await fs.readFile(errFile, 'utf8');
+  } catch (e) {
+    logError('Failed to read stderr file:', e);
+  }
+
+  const isAuthRequired =
+    stdoutContent.includes('Authentication required') ||
+    stdoutContent.includes('Please visit the URL to log in') ||
+    stderrContent.includes('Authentication required') ||
+    stderrContent.includes('Please visit the URL to log in');
+
+  if (isAuthRequired) {
+    logError('================================================================================');
+    logError('AGY CLI authentication required.');
+    logError('To resolve this, please follow these steps:');
+    logError('1. Get into the container by running:');
+    logError('   docker exec -it jarvis-agent-1 agy -p "any prompt"');
+    logError('2. Follow the prompt to visit the URL and log in.');
+    logError('3. After successful login, terminate or restart the container.');
+    logError('================================================================================');
+
+    await delayOneDay();
+    throw new Error('Failed to generate summary from AGY CLI: Authentication required.');
+  }
+
+  if (commandFailed) {
+    logError('Error calling AGY CLI:', commandError);
     if (stderrContent.trim()) {
       logError('AGY CLI stderr output:', stderrContent.trim());
     }
@@ -101,8 +123,57 @@ export async function summarizeContent(contentOrPrompt: string, isPromptAlready:
       logError('AGY CLI stdout output:', stdoutContent.trim());
     }
     throw new Error('Failed to generate summary from AGY CLI.');
+  }
+
+  try {
+    if (stderrContent.trim()) {
+      logInfo('AGY CLI stderr:', stderrContent.trim());
+    }
+
+    const parts = stdoutContent.split('---');
+    if (parts.length < 2) {
+      logError('AGY CLI stdout does not contain "---" separator. Full output:', stdoutContent);
+      throw new Error('Failed to parse summary: missing "---" separator.');
+    }
+    const summary = parts[1].trim();
+    logInfo('AGY CLI summary:', summary);
+    return summary;
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
 }
+
+async function delayOneDay(): Promise<void> {
+  logInfo('Starting a 24-hour delay. The container will remain active so you can log in...');
+
+  let timer: NodeJS.Timeout | undefined;
+  const sleepPromise = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, 24 * 60 * 60 * 1000); // 24 hours
+  });
+
+  const signalHandler = (signal: string) => {
+    logInfo(`Received signal ${signal}. Exiting delay immediately.`);
+    if (timer) {
+      clearTimeout(timer);
+    }
+    process.exit(0);
+  };
+
+  const sigtermHandler = () => signalHandler('SIGTERM');
+  const sigintHandler = () => signalHandler('SIGINT');
+
+  process.on('SIGTERM', sigtermHandler);
+  process.on('SIGINT', sigintHandler);
+
+  try {
+    await sleepPromise;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    process.off('SIGTERM', sigtermHandler);
+    process.off('SIGINT', sigintHandler);
+  }
+}
+
 

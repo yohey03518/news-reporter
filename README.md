@@ -90,7 +90,22 @@ docker run --env-file .env \
 - `-v ~/.gemini:/root/.gemini`: Mounts the authenticated credentials from the host to `/root/.gemini` so `agy` inside the container inherits the login state.
 - `-v $(pwd)/logs:/app/logs`: Mounts your local log directory to the container's log directory so that generated logs, screenshots, and cached prompt text files are persisted on your host machine.
 
+### 3. Troubleshooting Docker Authentication
+
+If the log shows that `agy` requires authentication:
+1. Access the running container shell and run a dummy prompt to trigger authentication:
+   ```bash
+   docker exec -it jarvis-agent-1 agy -p "hello"
+   ```
+2. Open the URL printed on screen to authenticate with Google.
+3. Paste the verification code into the prompt inside the container.
+4. Once logged in successfully, restart or terminate the container to apply the changes:
+   ```bash
+   docker restart jarvis-agent-1
+   ```
+
 ## Scheduling (macOS launchd)
+
 
 On macOS the job must be scheduled with **launchd**, not `cron`. The schedule
 (days/time) lives in `deploy/com.erwin.news-reporter.plist` under
