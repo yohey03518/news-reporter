@@ -55,7 +55,7 @@ After recording:
    pnpm start
    ```
 
-## Running with Docker (Linux/Ubuntu Host Only)
+## Running with Docker Compose (Linux/Ubuntu Host Only)
 
 > [!NOTE]
 > This Docker containerization setup is designed to run on a Linux/Ubuntu host (such as an Ubuntu Server) where the `agy` CLI is already authenticated on the host.
@@ -64,45 +64,35 @@ After recording:
 > - On macOS, the host `agy` CLI stores its credentials inside the secure Apple Keychain, which the container cannot access.
 > - On Linux/Ubuntu, `agy` stores its credentials as flat files inside `~/.gemini/`. Mounting this folder allows the containerized `agy` to reuse the host's authentication session directly.
 
-### 1. Build the Docker Image
+### 1. Run the Container
 
-Run the following command from the project root directory:
-
-```bash
-docker build -t news-reporter .
-```
-
-### 2. Run the Docker Container
-
-To run the container, you need to pass your environment variables and mount the host's `~/.gemini` folder (which contains the active OAuth session files) and the log folder:
+From the project root directory, run:
 
 ```bash
-docker run --env-file .env \
-  -v ~/.gemini:/root/.gemini \
-  -v $(pwd)/logs:/app/logs \
-  news-reporter
+docker compose up --build
 ```
 
-*Note: Replace `~/.gemini` with the absolute path to the authenticated user's home `.gemini` folder on your server (e.g., `/home/ubuntu/.gemini`).*
+*Note: Replace `~/.gemini` in `docker-compose.yml` with the absolute path to the authenticated user's home `.gemini` folder on your server (e.g., `/home/ubuntu/.gemini`) if running under a different user.*
 
-**Volume Mappings & Arguments:**
-- `--env-file .env`: Loads environment variables (like `PRESSPLAY_LOGIN_NAME`, `PRESSPLAY_PASSWORD`, `LOG_DIR`, `HEADLESS`, etc.) from your local `.env` file.
-- `-v ~/.gemini:/root/.gemini`: Mounts the authenticated credentials from the host to `/root/.gemini` so `agy` inside the container inherits the login state.
-- `-v $(pwd)/logs:/app/logs`: Mounts your local log directory to the container's log directory so that generated logs, screenshots, and cached prompt text files are persisted on your host machine.
+**What this does:**
+- `--build`: Rebuilds the image if any source files have changed.
+- Automatically loads variables from `.env`.
+- Mounts host's `~/.gemini` (OAuth sessions) and `./logs` (for persistent logs) as specified in `docker-compose.yml`.
 
-### 3. Troubleshooting Docker Authentication
+### 2. Troubleshooting Authentication with Docker Compose
 
 If the log shows that `agy` requires authentication:
-1. Access the running container shell and run a dummy prompt to trigger authentication:
+1. Start an interactive shell inside the service container:
    ```bash
-   docker exec -it jarvis-agent-1 agy -p "hello"
+   docker compose run --entrypoint bash news-reporter
    ```
-2. Open the URL printed on screen to authenticate with Google.
-3. Paste the verification code into the prompt inside the container.
-4. Once logged in successfully, restart or terminate the container to apply the changes:
+2. Run a dummy prompt to trigger authentication:
    ```bash
-   docker restart jarvis-agent-1
+   agy -p "hello"
    ```
+3. Open the URL printed on screen to authenticate with Google.
+4. Paste the verification code into the prompt inside the container.
+5. Once completed, exit the container and run `docker compose up` again.
 
 ## Scheduling (macOS launchd)
 

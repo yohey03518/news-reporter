@@ -1,0 +1,14 @@
+services:
+  news-reporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: news-reporter
+    restart: "no"
+    env_file:
+      - .env
+    volumes:
+      # Mount authenticated agy CLI credentials from the host to inherit the session
+      - ~/.gemini:/root/.gemini
+      # Mount the logs directory to persist app run logs, screenshots, and prompts
+      - ./logs:/app/logs
